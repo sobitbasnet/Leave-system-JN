@@ -1,0 +1,170 @@
+// Prisma Schema for JAV Staff Leave Management Portal
+// Provider is sqlite for local zero-dependency development/testing.
+// A production PostgreSQL schema is provided at prisma/schema.postgresql.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id                      String   @id @default(uuid())
+  employee_id             String   @unique
+  email                   String   @unique
+  password_hash           String
+  full_name               String
+  phone                   String?
+  whatsapp_number         String
+  department              String
+  designation             String
+  joining_date            String   // ISO YYYY-MM-DD
+  profile_photo_url       String?
+  emergency_contact_name  String?
+  emergency_contact_phone String?
+  address                 String?
+  blood_group             String?
+  date_of_birth           String?
+  gender                  String?
+  license_number          String?
+  bio                     String?
+  role                    String   @default("STAFF") // STAFF, APPROVER, ADMIN
+  status                  String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED
+  approver_id             String?
+  requires_password_change Boolean  @default(false)
+  monthly_paid_leave      Float?   @default(2.0) // Custom monthly leave entitlement for this staff (e.g. 1.0 or 2.0 days)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  // Self relation for assigned approver
+  approver                Profile?  @relation("StaffApprover", fields: [approver_id], references: [id], onDelete: SetNull)
+  subordinates            Profile[] @relation("StaffApprover")
+
+  // Leave relationships
+  leave_requests          LeaveRequest[] @relation("EmployeeLeaveRequests")
+  handover_requests       LeaveRequest[] @relation("HandoverLeaveRequests")
+  approved_requests       LeaveRequest[] @relation("ApproverLeaveRequests")
+  rejected_requests       LeaveRequest[] @relation("RejectorLeaveRequests")
+
+  // Ledger and logs
+  ledger_entries          LeaveLedger[]  @relation("EmployeeLedger")
+  created_ledger_entries  LeaveLedger[]  @relation("CreatorLedger")
+  audit_logs              AuditLog[]
+}
+
+model LeaveRequest {
+  id                    String    @id @default(uuid())
+  employee_id           String
+  start_date            String    // ISO YYYY-MM-DD
+  end_date              String    // ISO YYYY-MM-DD
+  calculated_days       Float
+  handover_employee_id  String
+  reason                String
+  contact_during_leave  String?
+  additional_notes      String?
+  attachment_url        String?
+  leave_type            String    @default("REGULAR") // REGULAR, ADVANCE
+  status                String    @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  requested_at          DateTime  @default(now())
+  approved_by           String?
+  approved_at           DateTime?
+  approval_remarks      String?
+  rejected_by           String?
+  rejected_at           DateTime?
+  rejection_reason      String?
+  cancelled_at          DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  employee              Profile   @relation("EmployeeLeaveRequests", fields: [employee_id], references: [id], onDelete: Restrict)
+  handover_employee     Profile   @relation("HandoverLeaveRequests", fields: [handover_employee_id], references: [id], onDelete: Restrict)
+  approver              Profile?  @relation("ApproverLeaveRequests", fields: [approved_by], references: [id])
+  rejector              Profile?  @relation("RejectorLeaveRequests", fields: [rejected_by], references: [id])
+
+  ledger_entries        LeaveLedger[]
+  notification_logs     NotificationLog[]
+}
+
+model LeaveLedger {
+  id                String        @id @default(uuid())
+  employee_id       String
+  transaction_type  String        // OPENING_BALANCE, MONTHLY_ACCRUAL, APPROVED_LEAVE_DEBIT, MANUAL_CREDIT, MANUAL_DEBIT, REVERSAL, ADJUSTMENT
+  amount            Float         // Positive for credits, negative for debits
+  leave_request_id  String?
+  accrual_year      Int?
+  accrual_month     Int?
+  notes             String
+  created_by        String?
+  created_at        DateTime      @default(now())
+  dedup_key         String?       @unique // Unique idempotency key (e.g. ACCRUAL_empId_2026_1 or DEBIT_requestId)
+
+  employee          Profile       @relation("EmployeeLedger", fields: [employee_id], references: [id], onDelete: Restrict)
+  creator           Profile?      @relation("CreatorLedger", fields: [created_by], references: [id], onDelete: SetNull)
+  leave_request     LeaveRequest? @relation(fields: [leave_request_id], references: [id], onDelete: Restrict)
+}
+
+model Holiday {
+  id            String   @id @default(uuid())
+  holiday_name  String
+  holiday_date  String   @unique // ISO YYYY-MM-DD
+  notes         String?
+  active        Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+}
+
+model OrganizationSettings {
+  id                          String   @id @default("default")
+  organization_name           String   @default("Jaynepal Action Volunteers")
+  timezone                    String   @default("Asia/Kathmandu")
+  monthly_paid_leave          Float    @default(2.00)
+  weekly_holiday_day_of_week  Int?     @default(-1) // -1 or null = count all days (no exclusion)
+  carry_forward_enabled       Boolean  @default(true)
+  max_carry_forward           Float?
+  negative_balance_allowed    Boolean  @default(false)
+  notification_email          String?  @default("sobitb22@gmail.com")
+  smtp_host                   String?  @default("smtp.gmail.com")
+  smtp_port                   Int?     @default(465)
+  smtp_user                   String?  @default("sobitb22@gmail.com")
+  smtp_pass                   String?
+  smtp_from                   String?  @default("Jaynepal Action Volunteers <sobitb22@gmail.com>")
+  whatsapp_enabled            Boolean  @default(false)
+  approver_whatsapp_number    String?
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user_id     String?
+  action      String
+  entity_type String
+  entity_id   String
+  old_value   String?  // JSON string
+  new_value   String?  // JSON string
+  ip_address  String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+
+  user        Profile? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+}
+
+model NotificationLog {
+  id                  String        @id @default(uuid())
+  leave_request_id    String?
+  recipient           String
+  channel             String        @default("EMAIL")
+  status              String        @default("QUEUED") // QUEUED, SENT, DELIVERED, FAILED
+  provider            String        @default("NODEMAILER")
+  provider_message_id String?
+  payload             String?       // JSON string
+  error_message       String?
+  retry_count         Int           @default(0)
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+
+  leave_request       LeaveRequest? @relation(fields: [leave_request_id], references: [id], onDelete: SetNull)
+}
