@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, createSessionToken } from '@/lib/auth';
 import { createAuditLog } from '@/lib/audit';
+import { bootstrapDatabase } from '@/lib/bootstrap';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +18,16 @@ export async function POST(request: NextRequest) {
     const rawIdentifier = String(emailOrId).trim();
     const cleanLower = rawIdentifier.toLowerCase();
     const normalizedQuery = cleanLower.replace(/[^a-z0-9]/g, '');
+
+    // Ensure database has official profiles if deployed to an empty hosted database
+    try {
+      const count = await prisma.profile.count();
+      if (count === 0) {
+        await bootstrapDatabase();
+      }
+    } catch (bootstrapErr) {
+      console.warn('Auto-bootstrap skipped or tables pending:', bootstrapErr);
+    }
 
     // 1. Find profile by email or employee_id
     let user = await prisma.profile.findFirst({

@@ -80,7 +80,7 @@ export default function StaffLoginPage() {
                 htmlFor="staffId"
                 className="block text-sm font-semibold text-slate-700 mb-1"
               >
-                Staff Name (कर्मचारीको नाम) or Email
+                Staff Email / Username (इमेल वा युजरनेम) or ID
               </label>
               <div className="relative rounded-lg shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -93,12 +93,12 @@ export default function StaffLoginPage() {
                   required
                   value={emailOrId}
                   onChange={(e) => setEmailOrId(e.target.value)}
-                  placeholder="e.g. Sajan Majhi, Aavash, or email"
+                  placeholder="e.g. info.sobit@gmail.com, wastiaayush789@gmail.com or JAV-003"
                   className="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 text-sm focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
                 />
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
-                तपाईंको पूरा नाम वा पहिलो नाम टाइप गर्नुहोस् (e.g. Sajan, Sobit, Bikesh)
+                तपाईंको दर्ता भएको Email (वा Staff ID / नाम) प्रयोग गर्नुहोस्
               </p>
             </div>
 

@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('--- Starting Official Staff Seed for Jaynepal Action Volunteers ---');
+  console.log('--- Seeding Official Staff & Admin Accounts for Jaynepal Action Volunteers ---');
 
   // 1. Organization Settings
   await prisma.organizationSettings.upsert({
@@ -13,7 +13,7 @@ async function main() {
       organization_name: 'Jaynepal Action Volunteers',
       timezone: 'Asia/Kathmandu',
       monthly_paid_leave: 2.0,
-      weekly_holiday_day_of_week: null, // Full inclusive leave calculation (e.g. 24 to 26 = 3 days)
+      weekly_holiday_day_of_week: null,
       carry_forward_enabled: true,
       max_carry_forward: null,
       negative_balance_allowed: false,
@@ -60,22 +60,22 @@ async function main() {
   }
   console.log(`✓ Seeded ${holidays.length} Nepali holidays`);
 
-  // 3. User Credentials Hashes
+  // 3. User Password Hashes
   const defaultPassword = 'Bodgaun123';
   const defaultPasswordHash = await bcrypt.hash(defaultPassword, 10);
   const rootAdminPasswordHash = await bcrypt.hash('admin', 10);
-  const adminPasswordHash = defaultPasswordHash;
-  const staffPasswordHash = defaultPasswordHash;
 
-  // System Root Admin Account (Username: admin@jaynepal.org, Password: admin)
+  // Central System Administrator
+  // NOTE: In update, password_hash is deliberately OMITTED so user changed passwords are preserved!
   const rootAdmin = await prisma.profile.upsert({
     where: { email: 'admin@jaynepal.org' },
     update: {
+      employee_id: 'JAV-ADM-000',
       role: 'ADMIN',
       full_name: 'Jay Nepal Central Admin',
       department: 'Jay Nepal NGO',
       designation: 'System Administrator',
-      password_hash: rootAdminPasswordHash,
+      status: 'ACTIVE',
     },
     create: {
       employee_id: 'JAV-ADM-000',
@@ -91,57 +91,70 @@ async function main() {
       status: 'ACTIVE',
     },
   });
+  console.log('✓ Seeded Central Admin (admin@jaynepal.org)');
 
-  // Official Organization Roster (19 Staff Members)
-  const officialRoster = [
-    // Executive Leadership (Jay Nepal NGO)
-    {
-      employee_id: 'JAV-001',
+  // Director Sobit Basnet (Approver / Admin)
+  const directorSobit = await prisma.profile.upsert({
+    where: { employee_id: 'JAV-001' },
+    update: {
+      email: 'sobitb22@gmail.com',
       full_name: 'Sobit Basnet',
       designation: 'Director',
       department: 'Jay Nepal NGO',
-      email: 'sobit@jaynepal.org',
       role: 'ADMIN',
-      joining_date: '2024-01-01',
+      status: 'ACTIVE',
       whatsapp_number: '9779841000001',
-      opening_balance: 10.0,
-      is_approver: true,
     },
+    create: {
+      employee_id: 'JAV-001',
+      email: 'sobitb22@gmail.com',
+      password_hash: defaultPasswordHash,
+      full_name: 'Sobit Basnet',
+      phone: '+977 9841000001',
+      whatsapp_number: '9779841000001',
+      department: 'Jay Nepal NGO',
+      designation: 'Director',
+      joining_date: '2024-01-01',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+    },
+  });
+  console.log('✓ Seeded Director Sobit Basnet (sobitb22@gmail.com)');
+
+  // Official Staff Roster (JAV-002 through JAV-033)
+  const roster = [
     {
       employee_id: 'JAV-002',
       full_name: 'Aayush Wasti',
       designation: 'Vice Director',
       department: 'Jay Nepal NGO',
-      email: 'aayush@jaynepal.org',
+      email: 'wastiaayush789@gmail.com',
       role: 'STAFF',
       joining_date: '2024-01-01',
       whatsapp_number: '9779841000002',
-      opening_balance: 10.0,
-      is_approver: false,
+      monthly_paid_leave: 2.0,
     },
-
-    // School of Social Development (SOSD) & IT Education
     {
       employee_id: 'JAV-003',
       full_name: 'Sajan Majhi',
       designation: 'Coordinator',
       department: 'School of Social Development (SOSD)',
-      email: 'sajan@jaynepal.org',
+      email: 'info.sobit@gmail.com',
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000003',
-      opening_balance: 6.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-004',
-      full_name: 'Aavash Poudel',
+      full_name: 'Aavash Paudel',
       designation: 'IT Teacher',
       department: 'IT Education Program',
       email: 'aavash@jaynepal.org',
       role: 'STAFF',
       joining_date: '2025-02-01',
       whatsapp_number: '9779841000004',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-005',
@@ -152,21 +165,19 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000005',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-006',
-      full_name: 'Tarachandra Majhi',
+      full_name: 'Tara Chandra Majhi',
       designation: 'Security Guard / Facility Support',
       department: 'School of Social Development (SOSD)',
       email: 'tarachandra@jaynepal.org',
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000006',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
-
-    // Bodgaun Primary Hospital Team
     {
       employee_id: 'JAV-007',
       full_name: 'Dr. Bikesh Shrestha',
@@ -176,8 +187,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2024-06-01',
       whatsapp_number: '9779841000007',
-      opening_balance: 8.0,
-      is_approver: false,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-008',
@@ -188,7 +198,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000008',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-009',
@@ -199,7 +209,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000009',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-010',
@@ -210,7 +220,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000010',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-011',
@@ -221,7 +231,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000011',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-012',
@@ -232,7 +242,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000012',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-013',
@@ -243,7 +253,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000013',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-014',
@@ -254,7 +264,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000014',
-      opening_balance: 4.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-015',
@@ -265,7 +275,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-03-01',
       whatsapp_number: '9779841000015',
-      opening_balance: 2.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-016',
@@ -276,7 +286,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-03-01',
       whatsapp_number: '9779841000016',
-      opening_balance: 2.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-017',
@@ -287,7 +297,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-03-01',
       whatsapp_number: '9779841000017',
-      opening_balance: 2.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-018',
@@ -298,7 +308,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-04-01',
       whatsapp_number: '9779841000018',
-      opening_balance: 2.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-019',
@@ -309,7 +319,7 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000019',
-      opening_balance: 0.0,
+      monthly_paid_leave: 2.0,
     },
     {
       employee_id: 'JAV-020',
@@ -320,7 +330,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000020',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -332,7 +341,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-01-01',
       whatsapp_number: '9779841000021',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -344,7 +352,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2023-06-01',
       whatsapp_number: '9779841000022',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -356,7 +363,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2023-06-01',
       whatsapp_number: '9779841000023',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -368,7 +374,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2022-01-16',
       whatsapp_number: '9779841000024',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -380,7 +385,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2025-02-02',
       whatsapp_number: '9779841000025',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -392,7 +396,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-02-08',
       whatsapp_number: '9779841000026',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -404,7 +407,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-05-19',
       whatsapp_number: '9779841000027',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -416,7 +418,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-04-28',
       whatsapp_number: '9779841000028',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -428,7 +429,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-05-01',
       whatsapp_number: '9779841000029',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -440,7 +440,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-04-01',
       whatsapp_number: '9779841000030',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -452,7 +451,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-07-14',
       whatsapp_number: '9779841000031',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -464,7 +462,6 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-03-10',
       whatsapp_number: '9779841000032',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
     {
@@ -476,49 +473,14 @@ async function main() {
       role: 'STAFF',
       joining_date: '2026-06-07',
       whatsapp_number: '9779841000033',
-      opening_balance: 0.0,
       monthly_paid_leave: 2.0,
     },
   ];
 
-  // Map to hold created profiles
-  const createdProfiles = new Map();
-
-  // First pass: upsert Director Sobit Basnet to act as default approver
-  const directorSobit = await prisma.profile.upsert({
-    where: { email: 'sobit@jaynepal.org' },
-    update: {
-      employee_id: 'JAV-001',
-      full_name: 'Sobit Basnet',
-      designation: 'Director',
-      department: 'Jay Nepal NGO',
-      role: 'ADMIN',
-      status: 'ACTIVE',
-      password_hash: defaultPasswordHash,
-    },
-    create: {
-      employee_id: 'JAV-001',
-      email: 'sobit@jaynepal.org',
-      password_hash: adminPasswordHash,
-      full_name: 'Sobit Basnet',
-      phone: '+977 9841000001',
-      whatsapp_number: '9779841000001',
-      department: 'Jay Nepal NGO',
-      designation: 'Director',
-      joining_date: '2024-01-01',
-      role: 'ADMIN',
-      status: 'ACTIVE',
-    },
-  });
-  createdProfiles.set('JAV-001', directorSobit);
-
-  // Second pass: Upsert all other personnel
-  for (const emp of officialRoster) {
-    if (emp.employee_id === 'JAV-001') continue;
-
-    const pwdHash = emp.role === 'ADMIN' || emp.role === 'APPROVER' ? adminPasswordHash : staffPasswordHash;
-
-    const profile = await prisma.profile.upsert({
+  for (const emp of roster) {
+    // Upsert each staff member. Note: password_hash is ONLY set on create!
+    // If a profile exists and user changed their password, it will NOT be overwritten.
+    await prisma.profile.upsert({
       where: { employee_id: emp.employee_id },
       update: {
         email: emp.email,
@@ -528,12 +490,13 @@ async function main() {
         role: emp.role,
         status: 'ACTIVE',
         approver_id: directorSobit.id,
-        password_hash: defaultPasswordHash,
+        monthly_paid_leave: emp.monthly_paid_leave || 2.0,
+        whatsapp_number: emp.whatsapp_number,
       },
       create: {
         employee_id: emp.employee_id,
         email: emp.email,
-        password_hash: pwdHash,
+        password_hash: defaultPasswordHash,
         full_name: emp.full_name,
         phone: `+977 ${emp.whatsapp_number.slice(3)}`,
         whatsapp_number: emp.whatsapp_number,
@@ -543,139 +506,13 @@ async function main() {
         role: emp.role,
         status: 'ACTIVE',
         approver_id: directorSobit.id,
+        monthly_paid_leave: emp.monthly_paid_leave || 2.0,
       },
     });
-
-    createdProfiles.set(emp.employee_id, profile);
   }
 
-  console.log(`✓ Seeded ${officialRoster.length} official organization staff profiles`);
-
-  // 4. Seed Opening Balances & 2026 Monthly Accruals for each staff member
-  for (const emp of officialRoster) {
-    const p = createdProfiles.get(emp.employee_id);
-    if (!p) continue;
-
-    // Opening Balance
-    await prisma.leaveLedger.upsert({
-      where: { dedup_key: `OPENING_${p.id}` },
-      update: { amount: emp.opening_balance },
-      create: {
-        employee_id: p.id,
-        transaction_type: 'OPENING_BALANCE',
-        amount: emp.opening_balance,
-        notes: `Opening leave balance baseline on joining (${emp.joining_date})`,
-        dedup_key: `OPENING_${p.id}`,
-        created_by: directorSobit.id,
-      },
-    });
-
-    // January 2026 Accrual (+2 days)
-    if (emp.joining_date <= '2026-01-31') {
-      await prisma.leaveLedger.upsert({
-        where: { dedup_key: `ACCRUAL_${p.id}_2026_1` },
-        update: {},
-        create: {
-          employee_id: p.id,
-          transaction_type: 'MONTHLY_ACCRUAL',
-          amount: 2.0,
-          accrual_year: 2026,
-          accrual_month: 1,
-          notes: 'January 2026 Monthly Paid Leave Accrual',
-          dedup_key: `ACCRUAL_${p.id}_2026_1`,
-          created_by: directorSobit.id,
-        },
-      });
-    }
-
-    // February 2026 Accrual (+2 days)
-    if (emp.joining_date <= '2026-02-28') {
-      await prisma.leaveLedger.upsert({
-        where: { dedup_key: `ACCRUAL_${p.id}_2026_2` },
-        update: {},
-        create: {
-          employee_id: p.id,
-          transaction_type: 'MONTHLY_ACCRUAL',
-          amount: 2.0,
-          accrual_year: 2026,
-          accrual_month: 2,
-          notes: 'February 2026 Monthly Paid Leave Accrual',
-          dedup_key: `ACCRUAL_${p.id}_2026_2`,
-          created_by: directorSobit.id,
-        },
-      });
-    }
-  }
-
-  console.log('✓ Seeded opening balances and monthly accruals for all personnel');
-
-  // 5. Seed a Sample Pending Request from Sajan Majhi (Handover to Aavash Poudel)
-  const sajanProfile = createdProfiles.get('JAV-003');
-  const aavashProfile = createdProfiles.get('JAV-004');
-
-  if (sajanProfile && aavashProfile) {
-    const existingPending = await prisma.leaveRequest.findFirst({
-      where: { employee_id: sajanProfile.id, status: 'PENDING' },
-    });
-
-    if (!existingPending) {
-      await prisma.leaveRequest.create({
-        data: {
-          employee_id: sajanProfile.id,
-          start_date: '2026-10-04', // Sunday
-          end_date: '2026-10-06',   // Tuesday
-          calculated_days: 3.0,
-          handover_employee_id: aavashProfile.id,
-          reason: 'SOSD Community engagement & education program planning in Sindhupalchok',
-          contact_during_leave: '+977 9841000003',
-          status: 'PENDING',
-        },
-      });
-      console.log('✓ Seeded sample pending leave request for Sajan Majhi');
-    }
-  }
-
-  // 6. Seed an Approved Leave for Dr. Bikesh Shrestha (Hospital)
-  const bikeshProfile = createdProfiles.get('JAV-007');
-  const sudipProfile = createdProfiles.get('JAV-010');
-
-  if (bikeshProfile && sudipProfile) {
-    const existingApproved = await prisma.leaveRequest.findFirst({
-      where: { employee_id: bikeshProfile.id, status: 'APPROVED' },
-    });
-
-    if (!existingApproved) {
-      const appLeave = await prisma.leaveRequest.create({
-        data: {
-          employee_id: bikeshProfile.id,
-          start_date: '2026-09-28', // Monday
-          end_date: '2026-09-29',   // Tuesday
-          calculated_days: 2.0,
-          handover_employee_id: sudipProfile.id,
-          reason: 'Medical CME conference on primary trauma care in Kathmandu',
-          status: 'APPROVED',
-          approved_by: directorSobit.id,
-          approved_at: new Date('2026-09-20T10:00:00Z'),
-          approval_remarks: 'Approved by Director Sobit Basnet. Sudip Basnet (HA) will cover clinical shifts.',
-        },
-      });
-
-      await prisma.leaveLedger.create({
-        data: {
-          employee_id: bikeshProfile.id,
-          transaction_type: 'APPROVED_LEAVE_DEBIT',
-          amount: -2.0,
-          leave_request_id: appLeave.id,
-          notes: `Approved leave debit for CME conference (${appLeave.start_date} to ${appLeave.end_date})`,
-          dedup_key: `DEBIT_${appLeave.id}`,
-          created_by: directorSobit.id,
-        },
-      });
-      console.log('✓ Seeded sample approved leave for Dr. Bikesh Shrestha');
-    }
-  }
-
-  console.log('--- Official Seed Execution Completed Successfully ---');
+  console.log(`✓ Seeded all ${roster.length} official staff members.`);
+  console.log('--- Official Seed Completed. Leave balances remain strictly 0.00 until manually credited. ---');
 }
 
 main()

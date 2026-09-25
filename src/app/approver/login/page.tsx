@@ -80,7 +80,7 @@ export default function ApproverLoginPage() {
                 htmlFor="approverId"
                 className="block text-sm font-semibold text-slate-200 mb-1"
               >
-                Approver Name (नाम), ID or Email
+                Approver Email / Username (इमेल वा युजरनेम) or ID
               </label>
               <div className="relative rounded-lg shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -93,12 +93,12 @@ export default function ApproverLoginPage() {
                   required
                   value={emailOrId}
                   onChange={(e) => setEmailOrId(e.target.value)}
-                  placeholder="e.g. Sobit Basnet, Aayush, or admin@jaynepal.org"
+                  placeholder="e.g. sobitb22@gmail.com, admin@jaynepal.org or JAV-001"
                   className="block w-full pl-10 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:bg-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                 />
               </div>
               <p className="mt-1 text-[11px] text-slate-400">
-                तपाईंको पूरा नाम वा पहिलो नाम टाइप गर्नुहोस् (e.g. Sobit, Aayush, Dr. Bikesh)
+                तपाईंको दर्ता भएको Email (वा Approver ID / नाम) प्रयोग गर्नुहोस्
               </p>
             </div>
 
