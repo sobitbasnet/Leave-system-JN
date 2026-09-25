@@ -22,9 +22,7 @@
 .env
 
 # Prisma & SQLite
-*.db
 *.db-journal
-/prisma/*.db
 /prisma/*.db-journal
 
 # Vercel

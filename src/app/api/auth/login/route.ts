@@ -19,15 +19,8 @@ export async function POST(request: NextRequest) {
     const cleanLower = rawIdentifier.toLowerCase();
     const normalizedQuery = cleanLower.replace(/[^a-z0-9]/g, '');
 
-    // Ensure database has official profiles if deployed to an empty hosted database
-    try {
-      const count = await prisma.profile.count();
-      if (count === 0) {
-        await bootstrapDatabase();
-      }
-    } catch (bootstrapErr) {
-      console.warn('Auto-bootstrap skipped or tables pending:', bootstrapErr);
-    }
+    // Ensure database tables and official profiles exist on fresh host
+    await bootstrapDatabase();
 
     // 1. Find profile by email or employee_id
     let user = await prisma.profile.findFirst({

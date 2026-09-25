@@ -3,6 +3,162 @@ import bcrypt from 'bcryptjs';
 
 export async function bootstrapDatabase() {
   try {
+    // 1. Ensure all tables exist in SQLite (creates them if not yet pushed)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Profile" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "employee_id" TEXT NOT NULL,
+        "email" TEXT NOT NULL,
+        "password_hash" TEXT NOT NULL,
+        "full_name" TEXT NOT NULL,
+        "phone" TEXT,
+        "whatsapp_number" TEXT NOT NULL,
+        "department" TEXT NOT NULL,
+        "designation" TEXT NOT NULL,
+        "joining_date" TEXT NOT NULL,
+        "profile_photo_url" TEXT,
+        "role" TEXT NOT NULL DEFAULT 'STAFF',
+        "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+        "approver_id" TEXT,
+        "requires_password_change" BOOLEAN NOT NULL DEFAULT false,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "address" TEXT,
+        "bio" TEXT,
+        "blood_group" TEXT,
+        "date_of_birth" TEXT,
+        "emergency_contact_name" TEXT,
+        "emergency_contact_phone" TEXT,
+        "gender" TEXT,
+        "license_number" TEXT,
+        "monthly_paid_leave" REAL DEFAULT 2.0
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Profile_employee_id_key" ON "Profile"("employee_id");
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Profile_email_key" ON "Profile"("email");
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "LeaveRequest" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "employee_id" TEXT NOT NULL,
+        "start_date" TEXT NOT NULL,
+        "end_date" TEXT NOT NULL,
+        "calculated_days" REAL NOT NULL,
+        "handover_employee_id" TEXT NOT NULL,
+        "reason" TEXT NOT NULL,
+        "contact_during_leave" TEXT,
+        "additional_notes" TEXT,
+        "attachment_url" TEXT,
+        "leave_type" TEXT NOT NULL DEFAULT 'REGULAR',
+        "status" TEXT NOT NULL DEFAULT 'PENDING',
+        "requested_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "approved_by" TEXT,
+        "approved_at" DATETIME,
+        "approval_remarks" TEXT,
+        "rejected_by" TEXT,
+        "rejected_at" DATETIME,
+        "rejection_reason" TEXT,
+        "cancelled_at" DATETIME,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "LeaveLedger" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "employee_id" TEXT NOT NULL,
+        "transaction_type" TEXT NOT NULL,
+        "amount" REAL NOT NULL,
+        "leave_request_id" TEXT,
+        "accrual_year" INTEGER,
+        "accrual_month" INTEGER,
+        "notes" TEXT NOT NULL,
+        "created_by" TEXT,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "dedup_key" TEXT
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "LeaveLedger_dedup_key_key" ON "LeaveLedger"("dedup_key");
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Holiday" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "holiday_name" TEXT NOT NULL,
+        "holiday_date" TEXT NOT NULL,
+        "notes" TEXT,
+        "active" BOOLEAN NOT NULL DEFAULT true,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Holiday_holiday_date_key" ON "Holiday"("holiday_date");
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "OrganizationSettings" (
+        "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'default',
+        "organization_name" TEXT NOT NULL DEFAULT 'Jaynepal Action Volunteers',
+        "timezone" TEXT NOT NULL DEFAULT 'Asia/Kathmandu',
+        "monthly_paid_leave" REAL NOT NULL DEFAULT 2.00,
+        "weekly_holiday_day_of_week" INTEGER DEFAULT -1,
+        "carry_forward_enabled" BOOLEAN NOT NULL DEFAULT true,
+        "max_carry_forward" REAL,
+        "negative_balance_allowed" BOOLEAN NOT NULL DEFAULT false,
+        "whatsapp_enabled" BOOLEAN NOT NULL DEFAULT false,
+        "approver_whatsapp_number" TEXT,
+        "notification_email" TEXT DEFAULT 'sobitb22@gmail.com',
+        "smtp_host" TEXT DEFAULT 'smtp.gmail.com',
+        "smtp_port" INTEGER DEFAULT 465,
+        "smtp_user" TEXT DEFAULT 'sobitb22@gmail.com',
+        "smtp_pass" TEXT,
+        "smtp_from" TEXT DEFAULT 'Jaynepal Action Volunteers <sobitb22@gmail.com>',
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "AuditLog" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "user_id" TEXT,
+        "action" TEXT NOT NULL,
+        "entity_type" TEXT NOT NULL,
+        "entity_id" TEXT NOT NULL,
+        "old_value" TEXT,
+        "new_value" TEXT,
+        "ip_address" TEXT,
+        "user_agent" TEXT,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "NotificationLog" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "leave_request_id" TEXT,
+        "recipient" TEXT NOT NULL,
+        "channel" TEXT NOT NULL DEFAULT 'EMAIL',
+        "status" TEXT NOT NULL DEFAULT 'QUEUED',
+        "provider" TEXT NOT NULL DEFAULT 'NODEMAILER',
+        "provider_message_id" TEXT,
+        "payload" TEXT,
+        "error_message" TEXT,
+        "retry_count" INTEGER NOT NULL DEFAULT 0,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 2. Check if official profiles exist
     const count = await prisma.profile.count();
     if (count > 0) {
       return; // Already populated
@@ -10,7 +166,7 @@ export async function bootstrapDatabase() {
 
     console.log('🔄 Initializing empty database with official staff and admin accounts...');
 
-    // 1. Organization Settings
+    // Organization Settings
     await prisma.organizationSettings.upsert({
       where: { id: 'default' },
       update: {},
@@ -28,7 +184,7 @@ export async function bootstrapDatabase() {
       },
     });
 
-    // 2. Nepali Public & Organization Holidays
+    // Nepali Public & Organization Holidays
     const holidays = [
       { holiday_name: "Prithvi Jayanti", holiday_date: "2026-01-11", notes: "National Unity Day" },
       { holiday_name: "Martyrs' Day", holiday_date: "2026-01-30", notes: "National Memorial" },
